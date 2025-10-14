@@ -302,10 +302,16 @@ function setup_database_tables($mysqli) {
         $mysqli->query("ALTER TABLE `categories` ADD CONSTRAINT `categories_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL");
     }
 
-    // Check for transaction_reference column in orders table
-    $result_tr = $mysqli->query("SHOW COLUMNS FROM `orders` LIKE 'transaction_reference'");
+    // Check for transaction_id column in orders table
+    $result_tr = $mysqli->query("SHOW COLUMNS FROM `orders` LIKE 'transaction_id'");
     if($result_tr->num_rows == 0){
-        $mysqli->query("ALTER TABLE `orders` ADD `transaction_reference` VARCHAR(255) DEFAULT NULL AFTER `payment_proof`");
+        // Check if old transaction_reference column exists and rename it
+        $result_old_tr = $mysqli->query("SHOW COLUMNS FROM `orders` LIKE 'transaction_reference'");
+        if ($result_old_tr->num_rows > 0) {
+            $mysqli->query("ALTER TABLE `orders` CHANGE `transaction_reference` `transaction_id` VARCHAR(255) DEFAULT NULL");
+        } else {
+            $mysqli->query("ALTER TABLE `orders` ADD `transaction_id` VARCHAR(255) DEFAULT NULL AFTER `payment_proof`");
+        }
     }
 
     // RBAC Migrations

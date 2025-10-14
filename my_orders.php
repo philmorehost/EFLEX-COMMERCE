@@ -104,7 +104,7 @@ if($stmt_total = $mysqli->prepare($sql_total)){
     $stmt_total->close();
 }
 $total_pages = ceil($total_records / $records_per_page);
-$sql = "SELECT id, created_at, total_amount, status FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+$sql = "SELECT id, created_at, total_amount, status, transaction_id FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
 $orders = [];
 if($stmt = $mysqli->prepare($sql)){
     $stmt->bind_param("iii", $user_id, $records_per_page, $offset);
@@ -121,13 +121,14 @@ if($stmt = $mysqli->prepare($sql)){
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
-                <tr><th>Order ID</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr>
+                <tr><th>Order ID</th><th>Transaction ID</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
                 <?php if(count($orders) > 0): ?>
                     <?php foreach($orders as $order): ?>
                     <tr>
                         <td>#<?php echo htmlspecialchars($order['id']); ?></td>
+                        <td><?php echo htmlspecialchars($order['transaction_id']); ?></td>
                         <td><?php echo htmlspecialchars($order['created_at']); ?></td>
                         <td><?php echo htmlspecialchars($_SESSION['currency_symbol']); ?><?php echo number_format($order['total_amount'], 2); ?></td>
                         <td><span class="badge bg-primary"><?php echo htmlspecialchars($order['status']); ?></span></td>

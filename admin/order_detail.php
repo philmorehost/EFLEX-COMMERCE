@@ -91,15 +91,52 @@ if($stmt_order = $mysqli->prepare($sql_order)){
 
 if(!$order){ echo "Order not found."; exit; }
 
-// Fetch Order Items
-$sql_items = "SELECT oi.*, p.name as product_name, p.image as product_image FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = ?";
+// Fetch Order Items and their variations
+$sql_items = "
+    SELECT
+        oi.id as order_item_id,
+        oi.quantity,
+        oi.price,
+        p.name as product_name,
+        p.image as product_image,
+        pa.name as attribute_name,
+        av.value as attribute_value
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    LEFT JOIN product_variants pv ON oi.variant_id = pv.id
+    LEFT JOIN product_variant_options pvo ON pv.id = pvo.variant_id
+    LEFT JOIN product_attributes pa ON pvo.attribute_id = pa.id
+    LEFT JOIN attribute_values av ON pvo.value_id = av.id
+    WHERE oi.order_id = ?
+    ORDER BY oi.id";
+
 $order_items = [];
 if($stmt_items = $mysqli->prepare($sql_items)){
     $stmt_items->bind_param("i", $order_id);
     $stmt_items->execute();
     $result_items = $stmt_items->get_result();
-    $order_items = $result_items->fetch_all(MYSQLI_ASSOC);
+    $items_raw = $result_items->fetch_all(MYSQLI_ASSOC);
     $stmt_items->close();
+
+    // Process the raw items to group variations under each item
+    foreach ($items_raw as $item) {
+        $item_id = $item['order_item_id'];
+        if (!isset($order_items[$item_id])) {
+            $order_items[$item_id] = [
+                'product_name' => $item['product_name'],
+                'product_image' => $item['product_image'],
+                'quantity' => $item['quantity'],
+                'price' => $item['price'],
+                'variations' => []
+            ];
+        }
+        if ($item['attribute_name'] && $item['attribute_value']) {
+            $order_items[$item_id]['variations'][] = [
+                'name' => $item['attribute_name'],
+                'value' => $item['attribute_value']
+            ];
+        }
+    }
 }
 ?>
 
@@ -131,7 +168,16 @@ if($stmt_items = $mysqli->prepare($sql_items)){
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <img src="../uploads/<?php echo htmlspecialchars($item['product_image']); ?>" class="me-3" style="width: 60px; height: 60px; object-fit: cover;">
-                                        <?php echo htmlspecialchars($item['product_name']); ?>
+                                        <div>
+                                            <?php echo htmlspecialchars($item['product_name']); ?>
+                                            <?php if (!empty($item['variations'])): ?>
+                                                <div class="small text-muted">
+                                                    <?php foreach ($item['variations'] as $variation): ?>
+                                                        <strong><?php echo htmlspecialchars($variation['name']); ?>:</strong> <?php echo htmlspecialchars($variation['value']); ?><br>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                 </td>
                                 <td><?php echo $item['quantity']; ?></td>
@@ -168,6 +214,9 @@ if($stmt_items = $mysqli->prepare($sql_items)){
             <div class="card-header">Order Summary</div>
             <div class="card-body">
                 <p><strong>Order ID:</strong> #<?php echo $order['id']; ?></p>
+                <?php if (!empty($order['transaction_id'])): ?>
+                    <p><strong>Transaction ID:</strong> <?php echo htmlspecialchars($order['transaction_id']); ?></p>
+                <?php endif; ?>
                 <p><strong>Date:</strong> <?php echo $order['created_at']; ?></p>
                 <p><strong>Total:</strong> <span class="fw-bold fs-5"><?php echo htmlspecialchars($_SESSION['currency_symbol']); ?><?php echo number_format($order['total_amount'], 2); ?></span></p>
                 <p><strong>Payment Method:</strong> <?php echo htmlspecialchars($order['payment_method']); ?></p>
