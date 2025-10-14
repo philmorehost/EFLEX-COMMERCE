@@ -105,8 +105,8 @@ $sql_items = "
     JOIN products p ON oi.product_id = p.id
     LEFT JOIN product_variants pv ON oi.variant_id = pv.id
     LEFT JOIN product_variant_options pvo ON pv.id = pvo.variant_id
-    LEFT JOIN product_attributes pa ON pvo.attribute_id = pa.id
     LEFT JOIN attribute_values av ON pvo.value_id = av.id
+    LEFT JOIN product_attributes pa ON av.attribute_id = pa.id
     WHERE oi.order_id = ?
     ORDER BY oi.id";
 

@@ -12,6 +12,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 require_once 'includes/db_connect.php';
 require_once 'includes/send_email.php';
 require_once 'includes/send_notification.php';
+require_once 'includes/helpers.php';
 
 if(empty($_SESSION['cart'])){
     header("location: cart.php");
@@ -73,7 +74,7 @@ if(!empty($_SESSION['cart'])){
                    (SELECT p_base.price FROM products p_base WHERE p_base.id = v.product_id) as base_price,
                    GROUP_CONCAT(CONCAT(pa.name, ': ', av.value) SEPARATOR ', ') as options
             FROM product_variants v JOIN products p ON v.product_id = p.id JOIN product_variant_options pvo ON v.id = pvo.variant_id
-            JOIN attribute_values av ON pvo.value_id = av.id JOIN product_attributes pa ON pvo.attribute_id = pa.id
+            JOIN attribute_values av ON pvo.value_id = av.id JOIN product_attributes pa ON av.attribute_id = pa.id
             WHERE v.id IN ($placeholders) GROUP BY v.id
         ";
         if($stmt = $mysqli->prepare($sql)){
@@ -99,12 +100,13 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
     $user_id = $_SESSION['id'];
     $payment_method = $_POST['payment_method'];
     $status = ($payment_method === 'bank_transfer') ? 'Awaiting Payment' : 'Pending';
+    $transaction_id = generate_unique_transaction_id($mysqli);
 
     $mysqli->begin_transaction();
     try {
-        $sql_order = "INSERT INTO orders (user_id, total_amount, payment_method, status) VALUES (?, ?, ?, ?)";
+        $sql_order = "INSERT INTO orders (user_id, total_amount, payment_method, status, transaction_id) VALUES (?, ?, ?, ?, ?)";
         $stmt_order = $mysqli->prepare($sql_order);
-        $stmt_order->bind_param("idss", $user_id, $total_price, $payment_method, $status);
+        $stmt_order->bind_param("idsss", $user_id, $total_price, $payment_method, $status, $transaction_id);
         $stmt_order->execute();
         $order_id = $mysqli->insert_id;
         $_SESSION['order_id'] = $order_id; // Store order_id in session for Paystack
