@@ -131,6 +131,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
             $user_body = "<h1>Thank You for Your Order!</h1>"
                        . "<p>Hi " . htmlspecialchars($_SESSION['username']) . ",</p>"
                        . "<p>We've received your order (#" . $order_id . ") and are getting it ready.</p>"
+                       . "<p><strong>Transaction ID:</strong> " . htmlspecialchars($transaction_id) . "</p>"
                        . "<p><strong>Total:</strong> " . $currency_symbol . number_format($total_price, 2) . "</p>"
                        . "<p><strong>Payment Method:</strong> " . ucfirst($payment_method) . "</p>"
                        . "<p>You can view your order details here: <a href='http://".$_SERVER['HTTP_HOST']."/my_orders.php'>My Orders</a></p>";
@@ -142,6 +143,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
         $admin_body = "<h1>New Order Received</h1>"
                     . "<p>A new order has been placed on your website.</p>"
                     . "<p><strong>Order ID:</strong> #" . $order_id . "</p>"
+                    . "<p><strong>Transaction ID:</strong> " . htmlspecialchars($transaction_id) . "</p>"
                     . "<p><strong>Customer:</strong> " . htmlspecialchars($_SESSION['username']) . "</p>"
                     . "<p><strong>Total:</strong> " . $currency_symbol . number_format($total_price, 2) . "</p>"
                     . "<p>You can view the full details in the admin panel.</p>";
