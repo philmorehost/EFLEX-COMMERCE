@@ -99,14 +99,15 @@ if(!empty($_SESSION['cart'])){
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
     $user_id = $_SESSION['id'];
     $payment_method = $_POST['payment_method'];
+    $order_notes = !empty($_POST['order_notes']) ? trim($_POST['order_notes']) : null;
     $status = ($payment_method === 'bank_transfer') ? 'Awaiting Payment' : 'Pending';
     $transaction_id = generate_unique_transaction_id($mysqli);
 
     $mysqli->begin_transaction();
     try {
-        $sql_order = "INSERT INTO orders (user_id, total_amount, payment_method, status, transaction_id) VALUES (?, ?, ?, ?, ?)";
+        $sql_order = "INSERT INTO orders (user_id, total_amount, payment_method, status, transaction_id, order_notes) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt_order = $mysqli->prepare($sql_order);
-        $stmt_order->bind_param("idsss", $user_id, $total_price, $payment_method, $status, $transaction_id);
+        $stmt_order->bind_param("idssss", $user_id, $total_price, $payment_method, $status, $transaction_id, $order_notes);
         $stmt_order->execute();
         $order_id = $mysqli->insert_id;
         $_SESSION['order_id'] = $order_id; // Store order_id in session for Paystack
@@ -218,6 +219,11 @@ include 'includes/header.php';
                  <div class="col-12"><label for="email" class="form-label">Email</label><input type="email" class="form-control" name="email" value="<?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?>" required></div>
             </div>
             <hr class="my-4">
+
+            <h5 class="mb-3">Order Notes (Optional)</h5>
+            <div class="mb-3">
+                <textarea class="form-control" name="order_notes" rows="3" placeholder="Add any special instructions for your order here..."></textarea>
+            </div>
 
             <h5 class="mb-3">Payment Method</h5>
             <div class="my-3">

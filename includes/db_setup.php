@@ -352,6 +352,22 @@ function setup_database_tables($mysqli) {
         $mysqli->query("ALTER TABLE `users` ADD `is_verified` TINYINT(1) NOT NULL DEFAULT 1 AFTER `onesignal_player_id`");
     }
 
+    // Add phone_number and address to users table
+    $result_phone = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'phone_number'");
+    if($result_phone->num_rows == 0){
+        $mysqli->query("ALTER TABLE `users` ADD `phone_number` VARCHAR(25) NULL DEFAULT NULL AFTER `email`");
+    }
+    $result_address = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'address'");
+    if($result_address->num_rows == 0){
+        $mysqli->query("ALTER TABLE `users` ADD `address` TEXT NULL DEFAULT NULL AFTER `phone_number`");
+    }
+
+    // Add order_notes to orders table
+    $result_notes = $mysqli->query("SHOW COLUMNS FROM `orders` LIKE 'order_notes'");
+    if($result_notes->num_rows == 0){
+        $mysqli->query("ALTER TABLE `orders` ADD `order_notes` TEXT NULL DEFAULT NULL AFTER `status`");
+    }
+
     // --- Seed Roles and Permissions ---
     $super_admin_role_id = 0;
     $role_result = $mysqli->query("SELECT id FROM roles WHERE role_name = 'Super Admin'");

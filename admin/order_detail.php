@@ -191,6 +191,15 @@ if($stmt_items = $mysqli->prepare($sql_items)){
             </div>
         </div>
 
+        <?php if (!empty($order['order_notes'])): ?>
+        <div class="card shadow mb-4">
+            <div class="card-header">Order Notes</div>
+            <div class="card-body">
+                <p><?php echo nl2br(htmlspecialchars($order['order_notes'])); ?></p>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if($order['payment_proof']): ?>
         <div class="card shadow mb-4">
             <div class="card-header bg-info text-white">Payment Proof Submitted</div>
