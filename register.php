@@ -170,6 +170,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     $_SESSION["loggedin"] = true;
                     $_SESSION["id"] = $stmt->insert_id;
                     $_SESSION["username"] = $username;
+                    $_SESSION["email"] = $email; // Also save email to session
 
                     $subject = "Welcome to Eflex!";
                     $body = "<h1>Welcome, " . htmlspecialchars($username) . "!</h1><p>Thank you for registering. Your account is active.</p>";

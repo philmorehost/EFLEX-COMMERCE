@@ -39,13 +39,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_proof'])){
     $order_id = $_POST['order_id'];
 
     if(isset($_FILES["payment_proof"]) && $_FILES["payment_proof"]["error"] == 0){
-        $allowed = ["jpg" => "image/jpeg", "jpeg" => "image/jpeg", "png" => "image/png", "pdf" => "application/pdf"];
+        $allowed = [
+            "jpg" => "image/jpeg",
+            "jpeg" => "image/jpeg",
+            "png" => "image/png",
+            "gif" => "image/gif",
+            "webp" => "image/webp",
+            "bmp" => "image/bmp",
+            "pdf" => "application/pdf"
+        ];
         $filename = $_FILES["payment_proof"]["name"];
         $filetype = $_FILES["payment_proof"]["type"];
         $filesize = $_FILES["payment_proof"]["size"];
 
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
-        if(!array_key_exists($ext, $allowed)) $message = '<div class="alert alert-danger">Error: Please select a valid file format (JPG, PNG, PDF).</div>';
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        if(!array_key_exists($ext, $allowed) || !in_array($filetype, $allowed)) {
+            $message = '<div class="alert alert-danger">Error: Invalid file type. Please upload a valid image (JPG, JPEG, PNG, GIF, WEBP, BMP) or a PDF.</div>';
+        }
 
         $maxsize = 5 * 1024 * 1024;
         if($filesize > $maxsize) $message = '<div class="alert alert-danger">Error: File size is larger than 5MB.</div>';
@@ -158,7 +168,7 @@ if($stmt = $mysqli->prepare($sql)){
                                     <form action="my_orders.php" method="post" enctype="multipart/form-data">
                                         <input type="hidden" name="order_id" value="<?php echo $order['id']; ?>">
                                         <div class="mb-3">
-                                            <label for="payment_proof" class="form-label">Select file (JPG, PNG, PDF)</label>
+                                            <label for="payment_proof" class="form-label">Select file (JPG, PNG, GIF, WEBP, BMP, PDF)</label>
                                             <input class="form-control" type="file" name="payment_proof" required>
                                         </div>
                                         <button type="submit" name="upload_proof" class="btn btn-primary">Upload</button>
