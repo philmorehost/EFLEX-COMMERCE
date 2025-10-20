@@ -34,7 +34,7 @@ $stmt_total->close();
 
 
 // Fetch orders for the current page
-$sql = "SELECT o.id, u.username, o.total_amount, o.status, o.created_at, o.transaction_id
+$sql = "SELECT o.id, u.username, u.phone, o.total_amount, o.status, o.created_at, o.transaction_id
         FROM orders o
         JOIN users u ON o.user_id = u.id
         $sql_where
@@ -71,7 +71,7 @@ if($stmt = $mysqli->prepare($sql)){
         <div class="table-responsive">
             <table class="table table-striped">
                 <!-- Table header -->
-                <thead><tr><th>Order ID</th><th>Transaction ID</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                <thead><tr><th>Order ID</th><th>Transaction ID</th><th>Customer</th><th>Phone</th><th>Date</th><th>Total</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
                 <tbody>
                     <?php if(count($orders) > 0): ?>
                         <?php foreach ($orders as $order): ?>
@@ -79,6 +79,7 @@ if($stmt = $mysqli->prepare($sql)){
                             <td>#<?php echo $order['id']; ?></td>
                             <td><?php echo htmlspecialchars($order['transaction_id']); ?></td>
                             <td><?php echo htmlspecialchars($order['username']); ?></td>
+                            <td><?php echo htmlspecialchars($order['phone'] ?? 'N/A'); ?></td>
                             <td><?php echo $order['created_at']; ?></td>
                             <td><?php echo htmlspecialchars($_SESSION['currency_symbol']); ?><?php echo number_format($order['total_amount'], 2); ?></td>
                             <td><span class="badge bg-primary"><?php echo htmlspecialchars($order['status']); ?></span></td>
@@ -88,7 +89,7 @@ if($stmt = $mysqli->prepare($sql)){
                         </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr><td colspan="6">No orders found.</td></tr>
+                        <tr><td colspan="8">No orders found.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>

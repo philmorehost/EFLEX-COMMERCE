@@ -148,6 +148,16 @@ if($product['category_id']) {
                     <li class="breadcrumb-item active" aria-current="page"><?php echo htmlspecialchars($product['name']); ?></li>
                 </ol>
             </nav>
+
+            <?php
+            // Display error messages if any
+            if (isset($_SESSION['error_message'])) {
+                echo '<div class="alert alert-danger" role="alert">' . $_SESSION['error_message'] . '</div>';
+                // Unset the error message so it doesn't show again on refresh
+                unset($_SESSION['error_message']);
+            }
+            ?>
+
             <h2><?php echo htmlspecialchars($product['name']); ?></h2>
             <div class="d-flex align-items-center mb-3">
                 <div class="star-rating-display me-2" data-rating="<?php echo $average_rating; ?>">
@@ -181,7 +191,7 @@ if($product['category_id']) {
                 <?php endif; ?>
 
                 <div class="row align-items-end">
-                    <div class="col-md-4">
+                    <div id="quantity-container" class="col-md-4" <?php echo ($product['has_variants']) ? 'style="display: none;"' : ''; ?>>
                         <label for="quantity" class="form-label">Quantity</label>
                         <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1">
                     </div>
@@ -225,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const stockDisplay = document.getElementById('stock-display');
     const stockLevelElement = document.getElementById('stock-level');
     const selectedVariantIdInput = document.getElementById('selected-variant-id');
+    const quantityContainer = document.getElementById('quantity-container');
     const basePriceText = '<?php echo htmlspecialchars($_SESSION['currency_symbol']); ?><?php echo htmlspecialchars(number_format($product['price'], 2)); ?>';
     const currencySymbol = '<?php echo htmlspecialchars($_SESSION['currency_symbol']); ?>';
     const variantGroups = document.querySelectorAll('.variant-group');
@@ -281,16 +292,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (matchedVariant.stock > 0) {
                     stockLevelElement.textContent = `${matchedVariant.stock} in stock`;
-                    stockLevelElement.classList.remove('out-of-stock');
-                    stockLevelElement.classList.add('in-stock');
+                    stockLevelElement.classList.remove('text-danger');
+                    stockLevelElement.classList.add('text-success');
                     addToCartBtn.disabled = false;
                     addToCartBtn.textContent = 'Add to Cart';
+                    quantityContainer.style.display = 'block';
                 } else {
                     stockLevelElement.textContent = 'Out of stock';
-                    stockLevelElement.classList.remove('in-stock');
-                    stockLevelElement.classList.add('out-of-stock');
+                    stockLevelElement.classList.remove('text-success');
+                    stockLevelElement.classList.add('text-danger');
                     addToCartBtn.disabled = true;
                     addToCartBtn.textContent = 'Out of Stock';
+                    quantityContainer.style.display = 'none';
                 }
                 stockDisplay.style.display = 'block';
             } else {
@@ -299,6 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 addToCartBtn.disabled = true;
                 addToCartBtn.textContent = 'Unavailable';
                 selectedVariantIdInput.value = '';
+                quantityContainer.style.display = 'none';
             }
         } else {
             priceElement.textContent = basePriceText;
@@ -306,6 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addToCartBtn.disabled = true;
             addToCartBtn.textContent = 'Select Options';
             selectedVariantIdInput.value = '';
+            quantityContainer.style.display = 'none';
         }
     }
 

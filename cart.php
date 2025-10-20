@@ -12,22 +12,91 @@ if(!isset($_SESSION['cart'])){
     $_SESSION['cart'] = array();
 }
 
-// Handle Add to Cart from product cards (for non-variant products)
-if(isset($_POST['add_to_cart']) && isset($_POST['product_id'])){
+// Handle Add to Cart action
+if (isset($_POST['add_to_cart']) && isset($_POST['product_id'])) {
     $product_id = (int)$_POST['product_id'];
-    $variant_id = (int)$_POST['variant_id'] ?? 0;
+    $variant_id = isset($_POST['variant_id']) && !empty($_POST['variant_id']) ? (int)$_POST['variant_id'] : 0;
     $quantity = (int)$_POST['quantity'] ?? 1;
+    $product_page_url = 'product_detail.php?id=' . $product_id;
+
+    if ($quantity <= 0) {
+        $_SESSION['error_message'] = "Invalid quantity specified.";
+        header('Location: ' . $product_page_url);
+        exit();
+    }
+
+    // Check if a variant is required but not selected
+    if ($variant_id === 0) {
+        $stmt = $mysqli->prepare("SELECT has_variants FROM products WHERE id = ?");
+        $stmt->bind_param("i", $product_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($product_info = $result->fetch_assoc()) {
+            if ($product_info['has_variants']) {
+                $_SESSION['error_message'] = "Please select a product variant to proceed.";
+                header('Location: ' . $product_page_url);
+                exit();
+            }
+        }
+        $stmt->close();
+    }
 
     $cart_key = $variant_id > 0 ? 'v_' . $variant_id : 'p_' . $product_id;
+    $current_cart_quantity = $_SESSION['cart'][$cart_key] ?? 0;
+    $requested_total_quantity = $current_cart_quantity + $quantity;
 
-    if($quantity > 0 && $product_id > 0) {
-        if(isset($_SESSION['cart'][$cart_key])){
+    $available_stock = 0;
+    $product_name = '';
+
+    if ($variant_id > 0) {
+        // It's a variant
+        $sql = "SELECT v.stock, p.name FROM product_variants v JOIN products p ON v.product_id = p.id WHERE v.id = ?";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param("i", $variant_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $available_stock = $row['stock'];
+            // For variants, we might want a more descriptive name, but this is fine for the error message
+            $product_name = $row['name'];
+        }
+        $stmt->close();
+    } else {
+        // It's a simple product
+        $sql = "SELECT stock, name FROM products WHERE id = ?";
+        $stmt = $mysqli->prepare($sql);
+        $stmt->bind_param("i", $product_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $available_stock = $row['stock'];
+            $product_name = $row['name'];
+        }
+        $stmt->close();
+    }
+
+    if ($available_stock === 0) {
+         $_SESSION['error_message'] = "Sorry, '" . htmlspecialchars($product_name) . "' is out of stock.";
+         header('Location: ' . $product_page_url);
+         exit();
+    }
+
+    if ($requested_total_quantity > $available_stock) {
+        $_SESSION['error_message'] = "Sorry, we only have " . $available_stock . " of '" . htmlspecialchars($product_name) . "' in stock.";
+        header('Location: ' . $product_page_url);
+        exit();
+    }
+
+    // If stock check passes, add to cart
+    if ($quantity > 0 && $product_id > 0) {
+        if (isset($_SESSION['cart'][$cart_key])) {
             $_SESSION['cart'][$cart_key] += $quantity;
         } else {
             $_SESSION['cart'][$cart_key] = $quantity;
         }
     }
-    // Redirect to the cart page to show the updated cart and prevent form resubmission
+
+    // Redirect to the cart page to show the updated cart
     header('Location: cart.php');
     exit();
 }
@@ -148,6 +217,14 @@ include 'includes/header.php';
 ?>
 
 <h2>Shopping Cart</h2>
+
+<?php
+// Display any errors that might have been sent back from checkout
+if (isset($_SESSION['cart_error'])) {
+    echo '<div class="alert alert-danger" role="alert">' . $_SESSION['cart_error'] . '</div>';
+    unset($_SESSION['cart_error']);
+}
+?>
 
 <?php if(!empty($cart_items)): ?>
 <div class="table-responsive">

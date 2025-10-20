@@ -97,6 +97,41 @@ if(!empty($_SESSION['cart'])){
 
 // Order processing
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
+    // Re-validate stock levels before processing the order
+    foreach ($cart_items as $key => $item) {
+        $stock_to_check = 0;
+        $product_name_for_error = $item['name'];
+
+        if ($item['is_variant']) {
+            $stmt = $mysqli->prepare("SELECT stock FROM product_variants WHERE id = ?");
+            $stmt->bind_param("i", $item['variant_id']);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($row = $result->fetch_assoc()) {
+                $stock_to_check = $row['stock'];
+            }
+            $stmt->close();
+        } else {
+            // Check if the product has variants, if so, stock is managed at the variant level
+            $p_stmt = $mysqli->prepare("SELECT has_variants, stock FROM products WHERE id = ?");
+            $p_stmt->bind_param("i", $item['product_id']);
+            $p_stmt->execute();
+            $p_result = $p_stmt->get_result();
+            if ($p_row = $p_result->fetch_assoc()) {
+                if (!$p_row['has_variants']) {
+                    $stock_to_check = $p_row['stock'];
+                }
+            }
+            $p_stmt->close();
+        }
+
+        if ($item['quantity'] > $stock_to_check) {
+            $_SESSION['cart_error'] = "Sorry, the quantity for '" . htmlspecialchars($product_name_for_error) . "' is no longer available. Please adjust your cart.";
+            header("Location: cart.php");
+            exit();
+        }
+    }
+
     $user_id = $_SESSION['id'];
     $payment_method = $_POST['payment_method'];
     $order_notes = !empty($_POST['order_notes']) ? trim($_POST['order_notes']) : null;
@@ -110,13 +145,30 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
         $stmt_order->bind_param("idssss", $user_id, $total_price, $payment_method, $status, $transaction_id, $order_notes);
         $stmt_order->execute();
         $order_id = $mysqli->insert_id;
-        $_SESSION['order_id'] = $order_id; // Store order_id in session for Paystack
+        $_SESSION['order_id'] = $order_id;
 
         $sql_items = "INSERT INTO order_items (order_id, product_id, variant_id, quantity, price) VALUES (?, ?, ?, ?, ?)";
         $stmt_items = $mysqli->prepare($sql_items);
+
         foreach($cart_items as $item){
+            // Add to order items table
             $stmt_items->bind_param("iiiid", $order_id, $item['product_id'], $item['variant_id'], $item['quantity'], $item['price']);
             $stmt_items->execute();
+
+            // Decrement stock
+            if ($item['is_variant']) {
+                $sql_update_stock = "UPDATE product_variants SET stock = stock - ? WHERE id = ?";
+                $stmt_stock = $mysqli->prepare($sql_update_stock);
+                $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+                $stmt_stock->execute();
+                $stmt_stock->close();
+            } else {
+                $sql_update_stock = "UPDATE products SET stock = stock - ? WHERE id = ? AND has_variants = 0";
+                $stmt_stock = $mysqli->prepare($sql_update_stock);
+                $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+                $stmt_stock->execute();
+                $stmt_stock->close();
+            }
         }
         $stmt_items->close();
         $stmt_order->close();
