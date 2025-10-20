@@ -105,7 +105,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     if(empty($username_err) && empty($email_err) && empty($password_err) && empty($confirm_password_err)){
 
         // Sanitize phone and address
-        $phone_number = !empty($_POST['phone_number']) ? trim($_POST['phone_number']) : null;
+        $phone = !empty($_POST['phone']) ? trim($_POST['phone']) : null;
         $address = !empty($_POST['address']) ? trim($_POST['address']) : null;
 
         // Get OTP setting from the pre-fetched settings array
@@ -113,9 +113,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
         if ($otp_register_enabled == '1') {
             // OTP flow: Create user as unverified and send OTP
-            $sql = "INSERT INTO users (username, email, password, phone_number, address, is_verified) VALUES (?, ?, ?, ?, ?, 0)";
+            $sql = "INSERT INTO users (username, email, password, phone, address, is_verified) VALUES (?, ?, ?, ?, ?, 0)";
             if($stmt = $mysqli->prepare($sql)){
-                $stmt->bind_param("sssss", $param_username, $param_email, $param_password, $phone_number, $address);
+                $stmt->bind_param("sssss", $param_username, $param_email, $param_password, $phone, $address);
                 $param_username = $username;
                 $param_email = $email;
                 $param_password = password_hash($password, PASSWORD_DEFAULT);
@@ -158,9 +158,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             }
         } else {
             // Standard flow: Create user as verified
-            $sql = "INSERT INTO users (username, email, password, phone_number, address, is_verified) VALUES (?, ?, ?, ?, ?, 1)";
+            $sql = "INSERT INTO users (username, email, password, phone, address, is_verified) VALUES (?, ?, ?, ?, ?, 1)";
             if($stmt = $mysqli->prepare($sql)){
-                $stmt->bind_param("sssss", $param_username, $param_email, $param_password, $phone_number, $address);
+                $stmt->bind_param("sssss", $param_username, $param_email, $param_password, $phone, $address);
                 $param_username = $username;
                 $param_email = $email;
                 $param_password = password_hash($password, PASSWORD_DEFAULT);
@@ -223,8 +223,8 @@ include 'includes/header.php';
                 <span class="invalid-feedback"><?php echo $email_err; ?></span>
             </div>
             <div class="form-group mb-3">
-                <label>Phone Number</label>
-                <input type="text" name="phone_number" class="form-control" value="">
+                <label>Phone</label>
+                <input type="text" name="phone" class="form-control" value="">
             </div>
             <div class="form-group mb-3">
                 <label>Address</label>

@@ -352,10 +352,16 @@ function setup_database_tables($mysqli) {
         $mysqli->query("ALTER TABLE `users` ADD `is_verified` TINYINT(1) NOT NULL DEFAULT 1 AFTER `onesignal_player_id`");
     }
 
-    // Add phone_number and address to users table
-    $result_phone = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'phone_number'");
+    // Add phone and address to users table
+    $result_phone = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'phone'");
     if($result_phone->num_rows == 0){
-        $mysqli->query("ALTER TABLE `users` ADD `phone_number` VARCHAR(25) NULL DEFAULT NULL AFTER `email`");
+        // Check if old phone_number column exists and rename it
+        $result_old_phone = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'phone_number'");
+        if ($result_old_phone->num_rows > 0) {
+            $mysqli->query("ALTER TABLE `users` CHANGE `phone_number` `phone` VARCHAR(25) NULL DEFAULT NULL");
+        } else {
+            $mysqli->query("ALTER TABLE `users` ADD `phone` VARCHAR(25) NULL DEFAULT NULL AFTER `email`");
+        }
     }
     $result_address = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'address'");
     if($result_address->num_rows == 0){
