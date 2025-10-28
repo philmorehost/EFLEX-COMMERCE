@@ -99,11 +99,36 @@ if($stmt = $mysqli->prepare($sql)){
 
 <!-- Pagination -->
 <nav aria-label="Page navigation">
-  <ul class="pagination justify-content-center mt-4">
-    <?php if($page > 1): ?><li class="page-item"><a class="page-link" href="manage_orders.php?page=<?php echo $page-1; ?>">Previous</a></li><?php endif; ?>
-    <?php for($i = 1; $i <= $total_pages; $i++): ?><li class="page-item <?php if($page == $i) echo 'active'; ?>"><a class="page-link" href="manage_orders.php?page=<?php echo $i; ?>"><?php echo $i; ?></a></li><?php endfor; ?>
-    <?php if($page < $total_pages): ?><li class="page-item"><a class="page-link" href="manage_orders.php?page=<?php echo $page+1; ?>">Next</a></li><?php endif; ?>
-  </ul>
+    <ul class="pagination justify-content-center flex-wrap mt-4">
+        <?php if ($page > 1): ?>
+            <li class="page-item"><a class="page-link" href="?page=1&search=<?php echo htmlspecialchars($search_query); ?>">First</a></li>
+            <li class="page-item"><a class="page-link" href="?page=<?php echo $page - 1; ?>&search=<?php echo htmlspecialchars($search_query); ?>">Previous</a></li>
+        <?php endif; ?>
+
+        <?php
+        $visible_pages = 2; // Number of pages to show before and after the current page
+        $start_page = max(1, $page - $visible_pages);
+        $end_page = min($total_pages, $page + $visible_pages);
+
+        if ($start_page > 1) {
+            echo '<li class="page-item disabled"><a class="page-link" href="#">...</a></li>';
+        }
+
+        for ($i = $start_page; $i <= $end_page; $i++): ?>
+            <li class="page-item <?php if ($page == $i) echo 'active'; ?>"><a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo htmlspecialchars($search_query); ?>"><?php echo $i; ?></a></li>
+        <?php endfor; ?>
+
+        <?php
+        if ($end_page < $total_pages) {
+            echo '<li class="page-item disabled"><a class="page-link" href="#">...</a></li>';
+        }
+        ?>
+
+        <?php if ($page < $total_pages): ?>
+            <li class="page-item"><a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo htmlspecialchars($search_query); ?>">Next</a></li>
+            <li class="page-item"><a class="page-link" href="?page=<?php echo $total_pages; ?>&search=<?php echo htmlspecialchars($search_query); ?>">Last</a></li>
+        <?php endif; ?>
+    </ul>
 </nav>
 <?php
 // Include the new admin footer

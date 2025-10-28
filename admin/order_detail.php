@@ -44,6 +44,38 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     }
 
     if(!empty($new_status) && $new_status !== $old_status){
+        // If the order is being cancelled, restore stock
+        if ($new_status === 'Cancelled') {
+            // Fetch all items from the order
+            $sql_items_for_stock = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
+            if($stmt_items_stock = $mysqli->prepare($sql_items_for_stock)){
+                $stmt_items_stock->bind_param("i", $order_id);
+                $stmt_items_stock->execute();
+                $items_to_restock = $stmt_items_stock->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmt_items_stock->close();
+
+                // Loop through items and update stock
+                foreach ($items_to_restock as $item) {
+                    if (!empty($item['variant_id'])) {
+                        // It's a variant product
+                        $sql_update_stock = "UPDATE product_variants SET stock = stock + ? WHERE id = ?";
+                        $stmt_stock = $mysqli->prepare($sql_update_stock);
+                        $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+                        $stmt_stock->execute();
+                        $stmt_stock->close();
+                    } else {
+                        // It's a simple product
+                        $sql_update_stock = "UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0";
+                        $stmt_stock = $mysqli->prepare($sql_update_stock);
+                        $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+                        $stmt_stock->execute();
+                        $stmt_stock->close();
+                    }
+                }
+                 $message .= '<div class="alert alert-success">Stock has been restored for all items in the cancelled order.</div>';
+            }
+        }
+
         $sql_update = "UPDATE orders SET status = ? WHERE id = ?";
         if($stmt_update = $mysqli->prepare($sql_update)){
             $stmt_update->bind_param("si", $new_status, $order_id);
