@@ -13,9 +13,9 @@
 
 // These are placeholder credentials. We will replace them later.
 define('DB_SERVER', 'localhost');
-define('DB_USERNAME', 'root');
-define('DB_PASSWORD', '');
-define('DB_NAME', 'ecommerce_db');
+define('DB_USERNAME', 'dcwdpibp_eshop');
+define('DB_PASSWORD', 'cke^IN~gJ1O4kAv0');
+define('DB_NAME', 'dcwdpibp_eshop');
 
 /* Attempt to connect to MySQL database */
 $mysqli = new mysqli(DB_SERVER, DB_USERNAME, DB_PASSWORD, DB_NAME);
