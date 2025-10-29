@@ -57,6 +57,17 @@ if($stmt = $mysqli->prepare($sql)){
     <h2>Manage Orders</h2>
 </div>
 
+<?php
+if(isset($_SESSION['success_message'])){
+    echo '<div class="alert alert-success">' . $_SESSION['success_message'] . '</div>';
+    unset($_SESSION['success_message']);
+}
+if(isset($_SESSION['error_message'])){
+    echo '<div class="alert alert-danger">' . $_SESSION['error_message'] . '</div>';
+    unset($_SESSION['error_message']);
+}
+?>
+
 <div class="card shadow">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
@@ -85,6 +96,9 @@ if($stmt = $mysqli->prepare($sql)){
                             <td><span class="badge bg-primary"><?php echo htmlspecialchars($order['status']); ?></span></td>
                             <td class="text-end">
                                 <a href="order_detail.php?id=<?php echo $order['id']; ?>" class="btn btn-sm btn-info">View Details</a>
+                                <?php if ($order['status'] === 'Cancelled' || $order['status'] === 'Pending'): ?>
+                                    <a href="delete_order.php?id=<?php echo $order['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this order?');">Delete</a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
