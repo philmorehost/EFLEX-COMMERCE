@@ -11,6 +11,31 @@ if(!$product_id) {
     exit;
 }
 
+// Handle Deletion of a downloadable file
+if(isset($_GET['delete_downloadable_file'])) {
+    $download_id_to_delete = $_GET['delete_downloadable_file'];
+    $sql_get_download = "SELECT file_path FROM product_downloads WHERE id = ? AND product_id = ?";
+    $stmt_get = $mysqli->prepare($sql_get_download);
+    $stmt_get->bind_param("ii", $download_id_to_delete, $product_id);
+    $stmt_get->execute();
+    $stmt_get->bind_result($file_path);
+    $stmt_get->fetch();
+    $stmt_get->close();
+
+    if($file_path) {
+        $sql_delete = "DELETE FROM product_downloads WHERE id = ?";
+        $stmt_delete = $mysqli->prepare($sql_delete);
+        $stmt_delete->bind_param("i", $download_id_to_delete);
+        if($stmt_delete->execute()) {
+            if(file_exists('../downloads/' . $file_path)) {
+                unlink('../downloads/' . $file_path);
+            }
+            $message = '<div class="alert alert-success">Downloadable file deleted.</div>';
+        }
+        $stmt_delete->close();
+    }
+}
+
 // Handle Deletion of a gallery image
 if(isset($_GET['delete_gallery_image'])) {
     $image_id_to_delete = $_GET['delete_gallery_image'];
@@ -65,6 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
             $category_id = trim($_POST["category_id"]);
             $is_featured_new = isset($_POST['is_featured']) ? 1 : 0;
             $is_top_seller_new = isset($_POST['is_top_seller']) ? 1 : 0;
+            $is_downloadable_new = isset($_POST['is_downloadable']) ? 1 : 0;
             $has_variants = isset($_POST['has_variants']) ? 1 : 0;
             $current_image = $_POST['current_image'];
 
@@ -98,9 +124,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
                 }
             }
 
-            $sql_update = "UPDATE products SET name=?, description=?, price=?, category_id=?, image=?, has_variants=?, is_featured=?, is_top_seller=? WHERE id=?";
+            $sql_update = "UPDATE products SET name=?, description=?, price=?, category_id=?, image=?, has_variants=?, is_featured=?, is_top_seller=?, is_downloadable=? WHERE id=?";
             $stmt_update = $mysqli->prepare($sql_update);
-            $stmt_update->bind_param("ssdisiiii", $name, $description, $price, $category_id, $new_main_image, $has_variants, $is_featured_new, $is_top_seller_new, $product_id);
+            $stmt_update->bind_param("ssdisiiiii", $name, $description, $price, $category_id, $new_main_image, $has_variants, $is_featured_new, $is_top_seller_new, $is_downloadable_new, $product_id);
 
             if ($stmt_update->execute()) {
                 $message = '<div class="alert alert-success">Product details updated successfully.</div>';
@@ -224,6 +250,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action'])) {
             $stmt_update_variant->close();
             $message = '<div class="alert alert-success">Variant details updated.</div>';
             break;
+        case 'upload_downloadable_file':
+            if (isset($_FILES['downloadable_file']['name'])) {
+                $file_name = $_FILES['downloadable_file']['name'];
+                $file_tmp = $_FILES['downloadable_file']['tmp_name'];
+                $download_limit = $_POST['download_limit'];
+
+                $new_filename = "download_" . uniqid() . "_" . $file_name;
+                if (move_uploaded_file($file_tmp, "../downloads/" . $new_filename)) {
+                    $sql_insert_download = "INSERT INTO product_downloads (product_id, file_path, download_limit) VALUES (?, ?, ?)";
+                    $stmt_insert_download = $mysqli->prepare($sql_insert_download);
+                    $stmt_insert_download->bind_param("isi", $product_id, $new_filename, $download_limit);
+                    $stmt_insert_download->execute();
+                    $stmt_insert_download->close();
+                    $message = '<div class="alert alert-success">Downloadable file uploaded.</div>';
+                } else {
+                    $message = '<div class="alert alert-danger">Failed to upload downloadable file.</div>';
+                }
+            }
+            break;
     }
 }
 
@@ -308,6 +353,7 @@ $stmt_variants->close();
             </div>
             <div class="mb-3 form-check"><input type="checkbox" name="is_featured" class="form-check-input" id="is_featured" value="1" <?php echo ($product['is_featured']) ? 'checked' : ''; ?>><label class="form-check-label" for="is_featured">Featured</label></div>
             <div class="mb-3 form-check"><input type="checkbox" name="is_top_seller" class="form-check-input" id="is_top_seller" value="1" <?php echo ($product['is_top_seller']) ? 'checked' : ''; ?>><label class="form-check-label" for="is_top_seller">Top Seller</label></div>
+            <div class="mb-3 form-check"><input type="checkbox" name="is_downloadable" class="form-check-input" id="is_downloadable" value="1" <?php echo ($product['is_downloadable']) ? 'checked' : ''; ?>><label class="form-check-label" for="is_downloadable">Downloadable</label></div>
 
             <hr>
             <!-- Variants Section integrated into main form -->
@@ -368,6 +414,56 @@ $stmt_variants->close();
     </div>
 </div>
 
+<div id="downloadable-files-section" class="card shadow mb-4" style="<?php echo ($product['is_downloadable']) ? '' : 'display: none;'; ?>">
+    <div class="card-header">Downloadable Files</div>
+    <div class="card-body">
+        <hr>
+        <h5>Existing Files</h5>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>File Path</th>
+                    <th>Download Limit</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $sql_downloads = "SELECT * FROM product_downloads WHERE product_id = ?";
+                $stmt_downloads = $mysqli->prepare($sql_downloads);
+                $stmt_downloads->bind_param("i", $product_id);
+                $stmt_downloads->execute();
+                $downloads = $stmt_downloads->get_result()->fetch_all(MYSQLI_ASSOC);
+                $stmt_downloads->close();
+
+                foreach($downloads as $download):
+                ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($download['file_path']); ?></td>
+                    <td><?php echo htmlspecialchars($download['download_limit']); ?></td>
+                    <td>
+                        <a href="edit_product.php?id=<?php echo $product_id; ?>&delete_downloadable_file=<?php echo $download['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <hr>
+        <h5>Upload New File</h5>
+        <form action="edit_product.php?id=<?php echo $product_id; ?>" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="downloadable_file" class="form-label">File</label>
+                <input type="file" name="downloadable_file" id="downloadable_file" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="download_limit" class="form-label">Download Limit</label>
+                <input type="number" name="download_limit" id="download_limit" class="form-control" value="5" required>
+            </div>
+            <button type="submit" name="action" value="upload_downloadable_file" class="btn btn-info">Upload File</button>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow">
     <div class="card-header">Product Gallery</div>
     <div class="card-body">
@@ -393,6 +489,15 @@ $stmt_variants->close();
 <script>
 document.getElementById('has_variants').addEventListener('change', function() {
     const container = document.getElementById('variants-config-container');
+    if (this.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+});
+
+document.getElementById('is_downloadable').addEventListener('change', function() {
+    const container = document.getElementById('downloadable-files-section');
     if (this.checked) {
         container.style.display = 'block';
     } else {

@@ -103,6 +103,38 @@ if($stmt_items = $mysqli->prepare($sql_items)){
 </div>
 
 <?php
+// Fetch and display downloadable files if the order is completed and contains them
+if ($order['status'] == 'Completed') {
+    $sql_downloads = "
+        SELECT pd.file_path, cd.download_token, cd.downloads_remaining
+        FROM customer_downloads cd
+        JOIN product_downloads pd ON cd.product_download_id = pd.id
+        WHERE cd.order_id = ? AND cd.user_id = ?
+    ";
+    $stmt_downloads = $mysqli->prepare($sql_downloads);
+    $stmt_downloads->bind_param("ii", $order_id, $user_id);
+    $stmt_downloads->execute();
+    $downloads = $stmt_downloads->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_downloads->close();
+
+    if (!empty($downloads)) {
+        echo '<div class="card mt-4"><div class="card-header"><h4>Your Downloads</h4></div><div class="card-body"><ul class="list-group">';
+        foreach ($downloads as $download) {
+            echo '<li class="list-group-item d-flex justify-content-between align-items-center">';
+            echo '<span>' . htmlspecialchars(basename($download['file_path'])) . '</span>';
+            if ($download['downloads_remaining'] > 0) {
+                echo '<a href="download.php?token=' . $download['download_token'] . '" class="btn btn-success">Download (' . $download['downloads_remaining'] . ' remaining)</a>';
+            } else {
+                echo '<span class="text-danger">Download limit reached</span>';
+            }
+            echo '</li>';
+        }
+        echo '</ul></div></div>';
+    }
+}
+?>
+
+<?php
 // Include the footer
 include 'includes/footer.php';
 ?>
