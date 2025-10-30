@@ -8,13 +8,8 @@ $message = "";
 // Function to handle image upload
 function handle_hero_image_upload($file_input_name) {
     if(isset($_FILES[$file_input_name]) && $_FILES[$file_input_name]["error"] == 0){
-        $allowed = ["jpg" => "image/jpeg", "png" => "image/png", "gif" => "image/gif"];
         $filename = $_FILES[$file_input_name]["name"];
         $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-
-        if(!array_key_exists($ext, $allowed)) {
-            return [ "error" => "Invalid file type for hero image." ];
-        }
 
         $new_filename = "hero_" . uniqid() . "." . $ext;
         $upload_path = "../uploads/" . $new_filename;
