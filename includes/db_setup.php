@@ -348,6 +348,12 @@ function setup_database_tables($mysqli) {
         $mysqli->query("ALTER TABLE `users` ADD `is_verified` TINYINT(1) NOT NULL DEFAULT 1 AFTER `onesignal_player_id`");
     }
 
+    // Check for purpose column in otp_codes table
+    $result_purpose = $mysqli->query("SHOW COLUMNS FROM `otp_codes` LIKE 'purpose'");
+    if($result_purpose->num_rows == 0){
+        $mysqli->query("ALTER TABLE `otp_codes` ADD `purpose` VARCHAR(255) NOT NULL DEFAULT 'login' AFTER `is_used`");
+    }
+
     // Add phone and address to users table
     $result_phone = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'phone'");
     if($result_phone->num_rows == 0){

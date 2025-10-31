@@ -155,20 +155,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
             $stmt_items->bind_param("iiiid", $order_id, $item['product_id'], $item['variant_id'], $item['quantity'], $item['price']);
             $stmt_items->execute();
 
-            // Decrement stock
-            if ($item['is_variant']) {
-                $sql_update_stock = "UPDATE product_variants SET stock = stock - ? WHERE id = ?";
-                $stmt_stock = $mysqli->prepare($sql_update_stock);
-                $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
-                $stmt_stock->execute();
-                $stmt_stock->close();
-            } else {
-                $sql_update_stock = "UPDATE products SET stock = stock - ? WHERE id = ? AND has_variants = 0";
-                $stmt_stock = $mysqli->prepare($sql_update_stock);
-                $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
-                $stmt_stock->execute();
-                $stmt_stock->close();
-            }
+            // Stock decrement is now handled by the admin when the order is marked as "Completed"
         }
         $stmt_items->close();
         $stmt_order->close();
