@@ -365,7 +365,7 @@ function setup_database_tables($mysqli) {
     }
     $result_address = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'address'");
     if($result_address->num_rows == 0){
-        $mysqli->query("ALTER TABLE `users` ADD `address` TEXT NULL DEFAULT NULL AFTER `phone_number`");
+        $mysqli->query("ALTER TABLE `users` ADD `address` TEXT NULL DEFAULT NULL AFTER `phone`");
     }
 
     // Add order_notes to orders table

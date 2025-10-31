@@ -45,7 +45,7 @@ if($result->num_rows == 1){
         $stmt_update->close();
 
         // Serve the file
-        $file_path = '../downloads/' . $download['file_path'];
+        $file_path = 'downloads/' . $download['file_path'];
         if(file_exists($file_path)){
             header('Content-Description: File Transfer');
             header('Content-Type: application/octet-stream');
