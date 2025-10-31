@@ -382,6 +382,12 @@ function setup_database_tables($mysqli) {
         $mysqli->query("ALTER TABLE `products` ADD `stock` INT(11) NULL DEFAULT 0 AFTER `price`");
     }
 
+    // Add stock_restored to orders table
+    $result_sr = $mysqli->query("SHOW COLUMNS FROM `orders` LIKE 'stock_restored'");
+    if($result_sr->num_rows == 0){
+        $mysqli->query("ALTER TABLE `orders` ADD `stock_restored` TINYINT(1) NOT NULL DEFAULT 0 AFTER `order_notes`");
+    }
+
     // --- Seed Roles and Permissions ---
     $super_admin_role_id = 0;
     $role_result = $mysqli->query("SELECT id FROM roles WHERE role_name = 'Super Admin'");

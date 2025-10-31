@@ -48,21 +48,41 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         try {
             // If the order is being cancelled, restore stock
             if ($new_status === 'Cancelled') {
-                $sql_items_for_stock = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
-                $stmt_items_stock = $mysqli->prepare($sql_items_for_stock);
-                $stmt_items_stock->bind_param("i", $order_id);
+                // Check if stock has already been restored for this order
+                $check_stock_sql = "SELECT stock_restored FROM orders WHERE id = ?";
+                $stmt_check_stock = $mysqli->prepare($check_stock_sql);
+                $stmt_check_stock->bind_param("i", $order_id);
+                $stmt_check_stock->execute();
+                $stock_restored_result = $stmt_check_stock->get_result()->fetch_assoc();
+                $stmt_check_stock->close();
+
+                if (!$stock_restored_result['stock_restored']) {
+                    $sql_items_for_stock = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
+                    $stmt_items_stock = $mysqli->prepare($sql_items_for_stock);
+                    $stmt_items_stock->bind_param("i", $order_id);
                 $stmt_items_stock->execute();
                 $items_to_restock = $stmt_items_stock->get_result()->fetch_all(MYSQLI_ASSOC);
                 $stmt_items_stock->close();
 
                 foreach ($items_to_restock as $item) {
                     if (!empty($item['variant_id'])) {
-                        $mysqli->query("UPDATE product_variants SET stock = stock + {$item['quantity']} WHERE id = {$item['variant_id']}");
+                        $stmt_update_stock = $mysqli->prepare("UPDATE product_variants SET stock = stock + ? WHERE id = ?");
+                        $stmt_update_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+                        $stmt_update_stock->execute();
+                        $stmt_update_stock->close();
                     } else {
-                        $mysqli->query("UPDATE products SET stock = stock + {$item['quantity']} WHERE id = {$item['product_id']} AND has_variants = 0");
+                        $stmt_update_stock = $mysqli->prepare("UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0");
+                        $stmt_update_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+                        $stmt_update_stock->execute();
+                        $stmt_update_stock->close();
                     }
                 }
+
+                // Mark stock as restored
+                $mysqli->query("UPDATE orders SET stock_restored = 1 WHERE id = $order_id");
+
                 $message .= '<div class="alert alert-success">Stock has been restored for the cancelled order.</div>';
+              }
             }
 
             // If the order is being marked as complete, deduct stock (if it wasn't already)
@@ -76,9 +96,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
                 foreach ($items_to_deduct as $item) {
                     if (!empty($item['variant_id'])) {
-                        $mysqli->query("UPDATE product_variants SET stock = stock - {$item['quantity']} WHERE id = {$item['variant_id']}");
+                        $stmt_update_stock = $mysqli->prepare("UPDATE product_variants SET stock = stock - ? WHERE id = ?");
+                        $stmt_update_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+                        $stmt_update_stock->execute();
+                        $stmt_update_stock->close();
                     } else {
-                        $mysqli->query("UPDATE products SET stock = stock - {$item['quantity']} WHERE id = {$item['product_id']} AND has_variants = 0");
+                        $stmt_update_stock = $mysqli->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND has_variants = 0");
+                        $stmt_update_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+                        $stmt_update_stock->execute();
+                        $stmt_update_stock->close();
                     }
                 }
                 $message .= '<div class="alert alert-success">Stock has been deducted for the completed order.</div>';
@@ -109,9 +135,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 $message .= '<div class="alert alert-info">User has been notified of the status change.</div>';
             }
             $stmt_update->close();
-
-            $mysqli->commit();
-        } catch (mysqli_sql_exception $exception) {
+        }
+        $mysqli->commit();
+    } catch (mysqli_sql_exception $exception) {
             $mysqli->rollback();
             $message = '<div class="alert alert-danger">Error updating order status: ' . $exception->getMessage() . '</div>';
         }

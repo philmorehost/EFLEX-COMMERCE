@@ -26,33 +26,47 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cancel_order'])){
     $mysqli->begin_transaction();
 
     try {
-        // First, fetch the items from the order to be cancelled
-        $sql_items = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
-        $stmt_items = $mysqli->prepare($sql_items);
-        $stmt_items->bind_param("i", $order_id_to_cancel);
-        $stmt_items->execute();
-        $items_to_restock = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt_items->close();
+        // Check if stock has already been restored
+        $check_stock_sql = "SELECT stock_restored FROM orders WHERE id = ? AND user_id = ?";
+        $stmt_check_stock = $mysqli->prepare($check_stock_sql);
+        $stmt_check_stock->bind_param("ii", $order_id_to_cancel, $user_id);
+        $stmt_check_stock->execute();
+        $stock_restored_result = $stmt_check_stock->get_result()->fetch_assoc();
+        $stmt_check_stock->close();
 
-        // Loop through items and restore stock
-        foreach ($items_to_restock as $item) {
-            if (!empty($item['variant_id'])) {
-                $sql_update_stock = "UPDATE product_variants SET stock = stock + ? WHERE id = ?";
-                $stmt_stock = $mysqli->prepare($sql_update_stock);
-                $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
-                $stmt_stock->execute();
-                $stmt_stock->close();
-            } else {
-                $sql_update_stock = "UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0";
-                $stmt_stock = $mysqli->prepare($sql_update_stock);
-                $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
-                $stmt_stock->execute();
-                $stmt_stock->close();
+        if ($stock_restored_result && !$stock_restored_result['stock_restored']) {
+            // Fetch the items from the order to be cancelled
+            $sql_items = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
+            $stmt_items = $mysqli->prepare($sql_items);
+            $stmt_items->bind_param("i", $order_id_to_cancel);
+            $stmt_items->execute();
+            $items_to_restock = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt_items->close();
+
+            // Loop through items and restore stock
+            foreach ($items_to_restock as $item) {
+                if (!empty($item['variant_id'])) {
+                    $sql_update_stock = "UPDATE product_variants SET stock = stock + ? WHERE id = ?";
+                    $stmt_stock = $mysqli->prepare($sql_update_stock);
+                    $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+                    $stmt_stock->execute();
+                    $stmt_stock->close();
+                } else {
+                    $sql_update_stock = "UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0";
+                    $stmt_stock = $mysqli->prepare($sql_update_stock);
+                    $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+                    $stmt_stock->execute();
+                    $stmt_stock->close();
+                }
             }
+
+            // Mark stock as restored and update status
+            $sql_cancel = "UPDATE orders SET status = 'Cancelled', stock_restored = 1 WHERE id = ? AND user_id = ? AND (status = 'Pending' OR status = 'Awaiting Payment')";
+        } else {
+            // If stock was already restored, just update the status
+            $sql_cancel = "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND user_id = ? AND (status = 'Pending' OR status = 'Awaiting Payment')";
         }
 
-        // Then, update order status to 'Cancelled'
-        $sql_cancel = "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND user_id = ? AND (status = 'Pending' OR status = 'Awaiting Payment')";
         $stmt_cancel = $mysqli->prepare($sql_cancel);
         $stmt_cancel->bind_param("ii", $order_id_to_cancel, $user_id);
         $stmt_cancel->execute();
