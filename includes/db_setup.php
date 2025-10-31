@@ -9,7 +9,7 @@ function setup_database_tables($mysqli) {
           `username` varchar(50) NOT NULL,
           `password` varchar(255) NOT NULL,
           `email` varchar(100) NOT NULL,
-          `role` enum('customer','admin') NOT NULL DEFAULT 'customer',
+          `role_id` int(11) DEFAULT NULL,
           `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (`id`),
           UNIQUE KEY `username` (`username`),
@@ -232,7 +232,7 @@ function setup_database_tables($mysqli) {
     ];
 
     // The foreign key constraints require the tables to be created in a specific order.
-    // We can ensure this by the order in the array above: users, categories, products, orders, order_items.
+    // We can ensure this by the order in the array above.
     foreach($table_creation_queries as $table_name => $query){
         // Check if table exists
         $result = $mysqli->query("SHOW TABLES LIKE '".$table_name."'");
@@ -246,6 +246,16 @@ function setup_database_tables($mysqli) {
     }
 
     // --- Schema Migration Checks ---
+    // RBAC: Drop old 'role' column from users table if it exists
+    if ($mysqli->query("SHOW COLUMNS FROM `users` LIKE 'role'")->num_rows > 0) {
+        $mysqli->query("ALTER TABLE `users` DROP COLUMN `role`");
+    }
+
+    // RBAC: Add 'role_id' to users table if it doesn't exist
+    if ($mysqli->query("SHOW COLUMNS FROM `users` LIKE 'role_id'")->num_rows == 0) {
+        $mysqli->query("ALTER TABLE `users` ADD `role_id` INT(11) NULL AFTER `email`");
+    }
+
     // Check for is_featured column in products table
     $result_featured = $mysqli->query("SHOW COLUMNS FROM `products` LIKE 'is_featured'");
     if($result_featured->num_rows == 0){
@@ -314,20 +324,6 @@ function setup_database_tables($mysqli) {
         }
     }
 
-    // RBAC Migrations
-    // Add role_id to users table
-    $result_role_id = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'role_id'");
-    if($result_role_id->num_rows == 0){
-        $mysqli->query("ALTER TABLE `users` ADD `role_id` INT(11) NULL AFTER `email`");
-        // Could add a foreign key constraint here, but might be complex with default roles.
-    }
-
-    // Drop old role column if role_id exists
-    $result_old_role = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'role'");
-    if($result_old_role->num_rows > 0 && $result_role_id->num_rows > 0){
-        $mysqli->query("ALTER TABLE `users` DROP COLUMN `role`");
-    }
-
     // Check for overlay_color column in hero_slides table
     $result_oc = $mysqli->query("SHOW COLUMNS FROM `hero_slides` LIKE 'overlay_color'");
     if($result_oc->num_rows == 0){
@@ -365,7 +361,7 @@ function setup_database_tables($mysqli) {
     }
     $result_address = $mysqli->query("SHOW COLUMNS FROM `users` LIKE 'address'");
     if($result_address->num_rows == 0){
-        $mysqli->query("ALTER TABLE `users` ADD `address` TEXT NULL DEFAULT NULL AFTER `phone_number`");
+        $mysqli->query("ALTER TABLE `users` ADD `address` TEXT NULL DEFAULT NULL AFTER `phone`");
     }
 
     // Add order_notes to orders table
@@ -417,7 +413,7 @@ function setup_database_tables($mysqli) {
 
     // --- Create/Update Default Admin User ---
     if($super_admin_role_id > 0){
-        $admin_user_result = $mysqli->query("SELECT id, role_id FROM users WHERE username = 'admin'");
+        $admin_user_result = $mysqli->query("SELECT id FROM users WHERE username = 'admin'");
         if($admin_user_result->num_rows == 0){
             // Admin user does not exist, create it
             $username = 'admin';
@@ -427,18 +423,13 @@ function setup_database_tables($mysqli) {
             $sql_user = "INSERT INTO users (username, email, password, role_id) VALUES (?, ?, ?, ?)";
             if($stmt_user = $mysqli->prepare($sql_user)){
                 $stmt_user->bind_param("sssi", $username, $email, $hashed_password, $super_admin_role_id);
-                if($stmt_user->execute()){
-                    $_SESSION['admin_created'] = true;
-                }
+                $stmt_user->execute();
                 $stmt_user->close();
             }
         } else {
-            // Admin user exists, check if role_id is NULL and update if necessary
-            $admin_user = $admin_user_result->fetch_assoc();
-            if(is_null($admin_user['role_id'])){
-                $admin_user_id = $admin_user['id'];
-                $mysqli->query("UPDATE users SET role_id = $super_admin_role_id WHERE id = $admin_user_id");
-            }
+            // Admin user exists, ensure its role_id is set correctly
+            $admin_user_id = $admin_user_result->fetch_assoc()['id'];
+            $mysqli->query("UPDATE users SET role_id = $super_admin_role_id WHERE id = $admin_user_id");
         }
     }
 }

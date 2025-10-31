@@ -31,6 +31,31 @@ if($order['status'] !== 'Cancelled' && $order['status'] !== 'Pending'){
 // Proceed with deletion
 $mysqli->begin_transaction();
 try {
+    // Fetch items from the order to be deleted to restore stock
+    $sql_items = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
+    $stmt_items = $mysqli->prepare($sql_items);
+    $stmt_items->bind_param("i", $order_id);
+    $stmt_items->execute();
+    $items_to_restock = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt_items->close();
+
+    // Loop through items and restore stock
+    foreach ($items_to_restock as $item) {
+        if (!empty($item['variant_id'])) {
+            $sql_update_stock = "UPDATE product_variants SET stock = stock + ? WHERE id = ?";
+            $stmt_stock = $mysqli->prepare($sql_update_stock);
+            $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+            $stmt_stock->execute();
+            $stmt_stock->close();
+        } else {
+            $sql_update_stock = "UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0";
+            $stmt_stock = $mysqli->prepare($sql_update_stock);
+            $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+            $stmt_stock->execute();
+            $stmt_stock->close();
+        }
+    }
+
     // Delete from order_items first to maintain referential integrity
     $stmt_items = $mysqli->prepare("DELETE FROM order_items WHERE order_id = ?");
     $stmt_items->bind_param("i", $order_id);
@@ -44,7 +69,7 @@ try {
     $stmt_order->close();
 
     $mysqli->commit();
-    $_SESSION['success_message'] = "Order #" . $order_id . " has been deleted successfully.";
+    $_SESSION['success_message'] = "Order #" . $order_id . " has been deleted successfully and stock has been restored.";
 
 } catch (mysqli_sql_exception $exception) {
     $mysqli->rollback();

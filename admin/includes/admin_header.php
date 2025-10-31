@@ -6,7 +6,8 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Basic login check. Specific permissions are checked on each page.
 if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
-    header("location: ../../login.php");
+    // Corrected the redirection to point to the admin login page.
+    header("location: " . rtrim(dirname($_SERVER['PHP_SELF']), '/\\') . "/index.php");
     exit;
 }
 

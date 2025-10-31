@@ -203,7 +203,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     }
 }
 
-// Include the header
+// Now, include the header which starts the HTML
 include 'includes/header.php';
 ?>
 

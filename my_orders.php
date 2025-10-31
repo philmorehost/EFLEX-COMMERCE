@@ -21,16 +21,51 @@ $message = "";
 // Handle Cancel Order
 if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['cancel_order'])){
     $order_id_to_cancel = $_POST['order_id'];
-    // Update order status to 'Cancelled'
-    $sql_cancel = "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND user_id = ? AND (status = 'Pending' OR status = 'Awaiting Payment')";
-    if($stmt_cancel = $mysqli->prepare($sql_cancel)){
-        $stmt_cancel->bind_param("ii", $order_id_to_cancel, $user_id);
-        if($stmt_cancel->execute()){
-            $message = '<div class="alert alert-info">Order #' . $order_id_to_cancel . ' has been cancelled.</div>';
-        } else {
-            $message = '<div class="alert alert-danger">There was an error cancelling your order.</div>';
+
+    // --- Begin transaction
+    $mysqli->begin_transaction();
+
+    try {
+        // First, fetch the items from the order to be cancelled
+        $sql_items = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
+        $stmt_items = $mysqli->prepare($sql_items);
+        $stmt_items->bind_param("i", $order_id_to_cancel);
+        $stmt_items->execute();
+        $items_to_restock = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt_items->close();
+
+        // Loop through items and restore stock
+        foreach ($items_to_restock as $item) {
+            if (!empty($item['variant_id'])) {
+                $sql_update_stock = "UPDATE product_variants SET stock = stock + ? WHERE id = ?";
+                $stmt_stock = $mysqli->prepare($sql_update_stock);
+                $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+                $stmt_stock->execute();
+                $stmt_stock->close();
+            } else {
+                $sql_update_stock = "UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0";
+                $stmt_stock = $mysqli->prepare($sql_update_stock);
+                $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+                $stmt_stock->execute();
+                $stmt_stock->close();
+            }
         }
+
+        // Then, update order status to 'Cancelled'
+        $sql_cancel = "UPDATE orders SET status = 'Cancelled' WHERE id = ? AND user_id = ? AND (status = 'Pending' OR status = 'Awaiting Payment')";
+        $stmt_cancel = $mysqli->prepare($sql_cancel);
+        $stmt_cancel->bind_param("ii", $order_id_to_cancel, $user_id);
+        $stmt_cancel->execute();
         $stmt_cancel->close();
+
+        // --- If everything is fine, commit the transaction
+        $mysqli->commit();
+        $message = '<div class="alert alert-info">Order #' . $order_id_to_cancel . ' has been cancelled and stock has been restored.</div>';
+
+    } catch (Exception $e) {
+        // --- An error occurred, roll back the transaction
+        $mysqli->rollback();
+        $message = '<div class="alert alert-danger">There was an error cancelling your order. Please try again.</div>';
     }
 }
 
