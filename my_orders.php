@@ -114,14 +114,7 @@ if($stmt_total = $mysqli->prepare($sql_total)){
     $stmt_total->close();
 }
 $total_pages = ceil($total_records / $records_per_page);
-$sql = "SELECT o.id, o.created_at, o.total_amount, o.status, o.transaction_id, MAX(p.is_downloadable) as has_downloadable
-        FROM orders o
-        JOIN order_items oi ON o.id = oi.order_id
-        JOIN products p ON oi.product_id = p.id
-        WHERE o.user_id = ?
-        GROUP BY o.id
-        ORDER BY o.created_at DESC
-        LIMIT ? OFFSET ?";
+$sql = "SELECT id, created_at, total_amount, status, transaction_id FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
 $orders = [];
 if($stmt = $mysqli->prepare($sql)){
     $stmt->bind_param("iii", $user_id, $records_per_page, $offset);
@@ -152,9 +145,6 @@ if($stmt = $mysqli->prepare($sql)){
                         <td>
                             <a href="view_order.php?id=<?php echo $order['id']; ?>" class="btn btn-sm btn-info">View Details</a>
                             <a href="invoice.php?id=<?php echo $order['id']; ?>" class="btn btn-sm btn-secondary" target="_blank">View Invoice</a>
-                            <?php if($order['has_downloadable'] && $order['status'] == 'Completed'): ?>
-                                <a href="view_order.php?id=<?php echo $order['id']; ?>" class="btn btn-sm btn-success">Downloads</a>
-                            <?php endif; ?>
                             <?php if($order['status'] == 'Awaiting Payment'): ?>
                                 <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#uploadModal<?php echo $order['id']; ?>">Upload Proof</button>
                             <?php endif; ?>

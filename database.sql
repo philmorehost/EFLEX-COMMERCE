@@ -16,8 +16,6 @@ DROP TABLE IF EXISTS `pages`;
 DROP TABLE IF EXISTS `banners`;
 DROP TABLE IF EXISTS `hero_settings`;
 DROP TABLE IF EXISTS `modal_ads`;
-DROP TABLE IF EXISTS `product_downloads`;
-DROP TABLE IF EXISTS `customer_downloads`;
 SET FOREIGN_KEY_CHECKS=1;
 
 CREATE TABLE `users` (
@@ -51,7 +49,6 @@ CREATE TABLE `products` (
   `image` varchar(255) DEFAULT 'default.jpg',
   `stock` int(11) DEFAULT 0,
   `has_variants` tinyint(1) DEFAULT 0,
-  `is_downloadable` tinyint(1) DEFAULT 0,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `category_id` (`category_id`),
@@ -124,35 +121,6 @@ CREATE TABLE `product_variant_options` (
   CONSTRAINT `product_variant_options_ibfk_1` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `product_variant_options_ibfk_2` FOREIGN KEY (`attribute_id`) REFERENCES `product_attributes` (`id`) ON DELETE CASCADE,
   CONSTRAINT `product_variant_options_ibfk_3` FOREIGN KEY (`value_id`) REFERENCES `attribute_values` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE `product_downloads` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `product_id` int(11) NOT NULL,
-  `file_path` varchar(255) NOT NULL,
-  `download_limit` int(11) DEFAULT 5,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `product_id` (`product_id`),
-  CONSTRAINT `product_downloads_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE `customer_downloads` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `order_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `product_download_id` int(11) NOT NULL,
-  `download_token` varchar(255) NOT NULL,
-  `downloads_remaining` int(11) DEFAULT 5,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `download_token` (`download_token`),
-  KEY `order_id` (`order_id`),
-  KEY `user_id` (`user_id`),
-  KEY `product_download_id` (`product_download_id`),
-  CONSTRAINT `customer_downloads_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `customer_downloads_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `customer_downloads_ibfk_3` FOREIGN KEY (`product_download_id`) REFERENCES `product_downloads` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `users` (id, username, password, email, phone, role_id) VALUES

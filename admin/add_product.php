@@ -16,7 +16,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     $category_id = $_POST["category_id"];
     $is_featured = isset($_POST['is_featured']) ? 1 : 0;
     $is_top_seller = isset($_POST['is_top_seller']) ? 1 : 0;
-    $is_downloadable = isset($_POST['is_downloadable']) ? 1 : 0;
 
     // Basic validation
     if(empty($name) || empty($price) || empty($category_id)) {
@@ -75,9 +74,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
         $mysqli->begin_transaction();
         try {
             // Insert into products table
-            $sql = "INSERT INTO products (name, description, price, category_id, image, is_featured, is_top_seller, is_downloadable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            $sql = "INSERT INTO products (name, description, price, category_id, image, is_featured, is_top_seller) VALUES (?, ?, ?, ?, ?, ?, ?)";
             $stmt = $mysqli->prepare($sql);
-            $stmt->bind_param("ssdisiii", $name, $description, $price, $category_id, $main_image_filename, $is_featured, $is_top_seller, $is_downloadable);
+            $stmt->bind_param("ssdisii", $name, $description, $price, $category_id, $main_image_filename, $is_featured, $is_top_seller);
             $stmt->execute();
             $product_id = $mysqli->insert_id;
             $stmt->close();
@@ -156,10 +155,6 @@ $categories = $result_categories->fetch_all(MYSQLI_ASSOC);
             <div class="mb-3 form-check">
                 <input type="checkbox" name="is_top_seller" class="form-check-input" id="is_top_seller" value="1">
                 <label class="form-check-label" for="is_top_seller">Top Seller</label>
-            </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" name="is_downloadable" class="form-check-input" id="is_downloadable" value="1">
-                <label class="form-check-label" for="is_downloadable">Downloadable Product</label>
             </div>
             <button type="submit" class="btn btn-primary">Add Product</button>
             <a href="manage_products.php" class="btn btn-secondary">Cancel</a>

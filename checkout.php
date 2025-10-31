@@ -51,7 +51,7 @@ if(!empty($_SESSION['cart'])){
 
     if (!empty($product_ids)) {
         $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
-        $sql = "SELECT id, name, price, image, is_downloadable FROM products WHERE id IN ($placeholders)";
+        $sql = "SELECT id, name, price, image FROM products WHERE id IN ($placeholders)";
         if($stmt = $mysqli->prepare($sql)){
             $stmt->bind_param(str_repeat('i', count($product_ids)), ...$product_ids);
             $stmt->execute();
@@ -61,7 +61,7 @@ if(!empty($_SESSION['cart'])){
                 $quantity = $_SESSION['cart'][$cart_key];
                 $subtotal = $row['price'] * $quantity;
                 $total_price += $subtotal;
-                $cart_items[$cart_key] = ['name' => $row['name'], 'price' => $row['price'], 'quantity' => $quantity, 'subtotal' => $subtotal, 'is_variant' => false, 'product_id' => $row['id'], 'variant_id' => null, 'is_downloadable' => $row['is_downloadable']];
+                $cart_items[$cart_key] = ['name' => $row['name'], 'price' => $row['price'], 'quantity' => $quantity, 'subtotal' => $subtotal, 'is_variant' => false, 'product_id' => $row['id'], 'variant_id' => null];
             }
             $stmt->close();
         }
@@ -156,38 +156,6 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['place_order'])){
             $stmt_items->execute();
 
             // Stock deduction is now handled when order is marked as 'Completed' by an admin
-            // if ($item['is_variant']) {
-            //     $sql_update_stock = "UPDATE product_variants SET stock = stock - ? WHERE id = ?";
-
-            // If product is downloadable, create a download link
-            if ($item['is_downloadable']) {
-                $sql_get_download = "SELECT id, download_limit FROM product_downloads WHERE product_id = ?";
-                $stmt_get_download = $mysqli->prepare($sql_get_download);
-                $stmt_get_download->bind_param("i", $item['product_id']);
-                $stmt_get_download->execute();
-                $downloads = $stmt_get_download->get_result()->fetch_all(MYSQLI_ASSOC);
-                $stmt_get_download->close();
-
-                foreach ($downloads as $download) {
-                    $download_token = bin2hex(random_bytes(16));
-                    $sql_insert_customer_download = "INSERT INTO customer_downloads (order_id, user_id, product_download_id, download_token, downloads_remaining) VALUES (?, ?, ?, ?, ?)";
-                    $stmt_insert_customer_download = $mysqli->prepare($sql_insert_customer_download);
-                    $stmt_insert_customer_download->bind_param("iiisi", $order_id, $user_id, $download['id'], $download_token, $download['download_limit']);
-                    $stmt_insert_customer_download->execute();
-                    $stmt_insert_customer_download->close();
-                }
-            }
-            //     $stmt_stock = $mysqli->prepare($sql_update_stock);
-            //     $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
-            //     $stmt_stock->execute();
-            //     $stmt_stock->close();
-            // } else {
-            //     $sql_update_stock = "UPDATE products SET stock = stock - ? WHERE id = ? AND has_variants = 0";
-            //     $stmt_stock = $mysqli->prepare($sql_update_stock);
-            //     $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
-            //     $stmt_stock->execute();
-            //     $stmt_stock->close();
-            // }
         }
         $stmt_items->close();
         $stmt_order->close();
