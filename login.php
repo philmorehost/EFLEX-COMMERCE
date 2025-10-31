@@ -120,10 +120,11 @@ include 'includes/header.php';
                 <input type="password" name="password" class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>">
                 <span class="invalid-feedback"><?php echo $password_err; ?></span>
             </div>
-            <div class="form-group">
+            <div class="form-group d-flex justify-content-between align-items-center">
                 <input type="submit" class="btn btn-primary" value="Login">
+                <a href="forgot_password.php">Forgot Password?</a>
             </div>
-            <p>Don't have an account? <a href="register.php">Sign up now</a>.</p>
+            <p class="mt-3">Don't have an account? <a href="register.php">Sign up now</a>.</p>
         </form>
     </div>
 </div>
