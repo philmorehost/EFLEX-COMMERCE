@@ -138,16 +138,10 @@ if($stmt = $mysqli->prepare($sql)){
 </div>
 
 <!-- Pagination -->
-<nav aria-label="Page navigation">
-  <ul class="pagination justify-content-center flex-wrap mt-4">
-    <?php
-        $query_string = !empty($search_term) ? "search=" . urlencode($search_term) . "&" : "";
-    ?>
-    <?php if($page > 1): ?><li class="page-item"><a class="page-link" href="manage_users.php?<?php echo $query_string; ?>page=<?php echo $page-1; ?>">Previous</a></li><?php endif; ?>
-    <?php for($i = 1; $i <= $total_pages; $i++): ?><li class="page-item <?php if($page == $i) echo 'active'; ?>"><a class="page-link" href="manage_users.php?<?php echo $query_string; ?>page=<?php echo $i; ?>"><?php echo $i; ?></a></li><?php endfor; ?>
-    <?php if($page < $total_pages): ?><li class="page-item"><a class="page-link" href="manage_users.php?<?php echo $query_string; ?>page=<?php echo $page+1; ?>">Next</a></li><?php endif; ?>
-  </ul>
-</nav>
+<?php
+$query_string = !empty($search_term) ? "search=" . urlencode($search_term) . "&" : "";
+render_pagination('manage_users.php', $total_pages, $page, $query_string);
+?>
 <?php
 // Include the new admin footer
 include 'includes/admin_footer.php';

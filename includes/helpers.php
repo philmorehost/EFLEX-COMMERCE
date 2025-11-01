@@ -30,4 +30,58 @@ function generate_unique_transaction_id($mysqli) {
     // Fallback to a longer, more random ID if we can't find a unique one
     return uniqid('TXN-', true);
 }
+
+function render_pagination($base_url, $total_pages, $current_page, $query_string = "") {
+    if ($total_pages <= 1) {
+        return;
+    }
+
+    echo '<nav aria-label="Page navigation">';
+    echo '<ul class="pagination justify-content-center flex-wrap mt-4">';
+
+    // Previous button
+    if ($current_page > 1) {
+        echo '<li class="page-item"><a class="page-link" href="' . $base_url . '?' . $query_string . 'page=' . ($current_page - 1) . '">Previous</a></li>';
+    }
+
+    // Page numbers logic
+    $window = 2; // Number of pages to show around the current page
+    if ($total_pages <= (2 * $window) + 5) {
+        // Show all pages if there aren't too many
+        for ($i = 1; $i <= $total_pages; $i++) {
+            echo '<li class="page-item ' . ($i == $current_page ? 'active' : '') . '"><a class="page-link" href="' . $base_url . '?' . $query_string . 'page=' . $i . '">' . $i . '</a></li>';
+        }
+    } else {
+        // Show first page
+        echo '<li class="page-item ' . (1 == $current_page ? 'active' : '') . '"><a class="page-link" href="' . $base_url . '?' . $query_string . 'page=1">1</a></li>';
+
+        // Ellipsis after first page
+        if ($current_page > $window + 2) {
+            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+
+        // Window of pages around current
+        $start = max(2, $current_page - $window);
+        $end = min($total_pages - 1, $current_page + $window);
+        for ($i = $start; $i <= $end; $i++) {
+            echo '<li class="page-item ' . ($i == $current_page ? 'active' : '') . '"><a class="page-link" href="' . $base_url . '?' . $query_string . 'page=' . $i . '">' . $i . '</a></li>';
+        }
+
+        // Ellipsis before last page
+        if ($current_page < $total_pages - $window - 1) {
+            echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+
+        // Show last page
+        echo '<li class="page-item ' . ($total_pages == $current_page ? 'active' : '') . '"><a class="page-link" href="' . $base_url . '?' . $query_string . 'page=' . $total_pages . '">' . $total_pages . '</a></li>';
+    }
+
+    // Next button
+    if ($current_page < $total_pages) {
+        echo '<li class="page-item"><a class="page-link" href="' . $base_url . '?' . $query_string . 'page=' . ($current_page + 1) . '">Next</a></li>';
+    }
+
+    echo '</ul>';
+    echo '</nav>';
+}
 ?>
