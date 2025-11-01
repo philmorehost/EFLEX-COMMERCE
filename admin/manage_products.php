@@ -37,20 +37,43 @@ $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] :
 $records_per_page = 10; // Show 10 products per page for admin
 $offset = ($page - 1) * $records_per_page;
 
+// Search term
+$search_term = isset($_GET['search']) ? $_GET['search'] : '';
+
+// Base query
+$sql_base = "FROM products p LEFT JOIN categories c ON p.category_id = c.id";
+$sql_where = "";
+$params = [];
+$types = "";
+
+if(!empty($search_term)){
+    $sql_where = " WHERE p.name LIKE ?";
+    $search_param = "%" . $search_term . "%";
+    $params[] = &$search_param;
+    $types .= "s";
+}
+
 // Get total number of products
-$total_records_result = $mysqli->query("SELECT COUNT(*) FROM products");
-$total_records = $total_records_result->fetch_row()[0];
+if(!empty($search_term)) {
+    $stmt_count = $mysqli->prepare("SELECT COUNT(*) " . $sql_base . $sql_where);
+    $stmt_count->bind_param($types, ...$params);
+    $stmt_count->execute();
+    $total_records = $stmt_count->get_result()->fetch_row()[0];
+    $stmt_count->close();
+} else {
+    $total_records_result = $mysqli->query("SELECT COUNT(*) FROM products");
+    $total_records = $total_records_result->fetch_row()[0];
+}
 $total_pages = ceil($total_records / $records_per_page);
 
-
 // Fetch products for the current page
-$sql = "SELECT p.id, p.name, p.price, p.image, c.name as category_name
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        ORDER BY p.name ASC
-        LIMIT ? OFFSET ?";
+$sql = "SELECT p.id, p.name, p.price, p.image, c.name as category_name " . $sql_base . $sql_where . " ORDER BY p.name ASC LIMIT ? OFFSET ?";
+$params[] = &$records_per_page;
+$params[] = &$offset;
+$types .= "ii";
+
 if($stmt = $mysqli->prepare($sql)){
-    $stmt->bind_param("ii", $records_per_page, $offset);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
     $products = $result->fetch_all(MYSQLI_ASSOC);
@@ -67,7 +90,13 @@ if($stmt = $mysqli->prepare($sql)){
     <?php echo $message; ?>
 
     <div class="card shadow">
-        <div class="card-header">Existing Products</div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Existing Products</span>
+            <form action="manage_products.php" method="get" class="d-inline-flex">
+                <input type="text" class="form-control form-control-sm me-2" name="search" placeholder="Search by product name..." value="<?php echo htmlspecialchars($search_term); ?>">
+                <button type="submit" class="btn btn-sm btn-primary">Search</button>
+            </form>
+        </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-striped">
@@ -98,10 +127,13 @@ if($stmt = $mysqli->prepare($sql)){
 
     <!-- Pagination -->
     <nav aria-label="Page navigation">
-      <ul class="pagination justify-content-center mt-4">
-        <?php if($page > 1): ?><li class="page-item"><a class="page-link" href="manage_products.php?page=<?php echo $page-1; ?>">Previous</a></li><?php endif; ?>
-        <?php for($i = 1; $i <= $total_pages; $i++): ?><li class="page-item <?php if($page == $i) echo 'active'; ?>"><a class="page-link" href="manage_products.php?page=<?php echo $i; ?>"><?php echo $i; ?></a></li><?php endfor; ?>
-        <?php if($page < $total_pages): ?><li class="page-item"><a class="page-link" href="manage_products.php?page=<?php echo $page+1; ?>">Next</a></li><?php endif; ?>
+      <ul class="pagination justify-content-center flex-wrap mt-4">
+        <?php
+            $query_string = !empty($search_term) ? "search=" . urlencode($search_term) . "&" : "";
+        ?>
+        <?php if($page > 1): ?><li class="page-item"><a class="page-link" href="manage_products.php?<?php echo $query_string; ?>page=<?php echo $page-1; ?>">Previous</a></li><?php endif; ?>
+        <?php for($i = 1; $i <= $total_pages; $i++): ?><li class="page-item <?php if($page == $i) echo 'active'; ?>"><a class="page-link" href="manage_products.php?<?php echo $query_string; ?>page=<?php echo $i; ?>"><?php echo $i; ?></a></li><?php endfor; ?>
+        <?php if($page < $total_pages): ?><li class="page-item"><a class="page-link" href="manage_products.php?<?php echo $query_string; ?>page=<?php echo $page+1; ?>">Next</a></li><?php endif; ?>
       </ul>
     </nav>
 </div>

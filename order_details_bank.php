@@ -10,6 +10,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 
 require_once 'includes/db_connect.php';
 require_once 'includes/send_email.php';
+require_once 'includes/send_notification.php';
 
 $message = "";
 $error = "";
