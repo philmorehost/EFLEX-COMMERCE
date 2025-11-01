@@ -1,6 +1,7 @@
 <?php
 // Include the new admin header
 include 'includes/admin_header.php';
+require_once '../includes/helpers.php'; // ../ because it's in the parent directory
 require_permission('manage_users');
 
 $message = "";
