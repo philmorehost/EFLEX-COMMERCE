@@ -85,30 +85,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
               }
             }
 
-            // If the order is being marked as complete, deduct stock (if it wasn't already)
-            if ($new_status === 'Completed' && $old_status !== 'Completed') {
-                $sql_items_for_deduction = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
-                $stmt_items_deduct = $mysqli->prepare($sql_items_for_deduction);
-                $stmt_items_deduct->bind_param("i", $order_id);
-                $stmt_items_deduct->execute();
-                $items_to_deduct = $stmt_items_deduct->get_result()->fetch_all(MYSQLI_ASSOC);
-                $stmt_items_deduct->close();
-
-                foreach ($items_to_deduct as $item) {
-                    if (!empty($item['variant_id'])) {
-                        $stmt_update_stock = $mysqli->prepare("UPDATE product_variants SET stock = stock - ? WHERE id = ?");
-                        $stmt_update_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
-                        $stmt_update_stock->execute();
-                        $stmt_update_stock->close();
-                    } else {
-                        $stmt_update_stock = $mysqli->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND has_variants = 0");
-                        $stmt_update_stock->bind_param("ii", $item['quantity'], $item['product_id']);
-                        $stmt_update_stock->execute();
-                        $stmt_update_stock->close();
-                    }
-                }
-                $message .= '<div class="alert alert-success">Stock has been deducted for the completed order.</div>';
-            }
+            // Stock is now deducted at checkout, so this is no longer needed.
+            // The logic to restore stock on cancellation remains.
 
         $sql_update = "UPDATE orders SET status = ? WHERE id = ?";
         if($stmt_update = $mysqli->prepare($sql_update)){

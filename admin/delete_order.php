@@ -31,45 +31,41 @@ if($order['status'] !== 'Cancelled' && $order['status'] !== 'Pending'){
 // Proceed with deletion
 $mysqli->begin_transaction();
 try {
-    // If the order was cancelled and stock hasn't been restored, restore it now.
-    // Do NOT restore stock for 'Pending' orders as it was never deducted.
-    if ($order['status'] === 'Cancelled') {
-        $check_stock_sql = "SELECT stock_restored FROM orders WHERE id = ?";
-        $stmt_check_stock = $mysqli->prepare($check_stock_sql);
-        $stmt_check_stock->bind_param("i", $order_id);
-        $stmt_check_stock->execute();
-        $stock_restored_result = $stmt_check_stock->get_result()->fetch_assoc();
-        $stmt_check_stock->close();
+    // For both 'Pending' and 'Cancelled' orders, we need to restore stock if it hasn't been restored already.
+    // Stock was deducted at checkout, so it needs to be returned.
+    $check_stock_sql = "SELECT stock_restored FROM orders WHERE id = ?";
+    $stmt_check_stock = $mysqli->prepare($check_stock_sql);
+    $stmt_check_stock->bind_param("i", $order_id);
+    $stmt_check_stock->execute();
+    $stock_restored_result = $stmt_check_stock->get_result()->fetch_assoc();
+    $stmt_check_stock->close();
 
-        if (!$stock_restored_result['stock_restored']) {
-            $sql_items = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
-            $stmt_items = $mysqli->prepare($sql_items);
-            $stmt_items->bind_param("i", $order_id);
-            $stmt_items->execute();
-            $items_to_restock = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
-            $stmt_items->close();
+    if (!$stock_restored_result['stock_restored']) {
+        $sql_items = "SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?";
+        $stmt_items = $mysqli->prepare($sql_items);
+        $stmt_items->bind_param("i", $order_id);
+        $stmt_items->execute();
+        $items_to_restock = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt_items->close();
 
-            foreach ($items_to_restock as $item) {
-                if (!empty($item['variant_id'])) {
-                    $sql_update_stock = "UPDATE product_variants SET stock = stock + ? WHERE id = ?";
-                    $stmt_stock = $mysqli->prepare($sql_update_stock);
-                    $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
-                    $stmt_stock->execute();
-                    $stmt_stock->close();
-                } else {
-                    $sql_update_stock = "UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0";
-                    $stmt_stock = $mysqli->prepare($sql_update_stock);
-                    $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
-                    $stmt_stock->execute();
-                    $stmt_stock->close();
-                }
+        foreach ($items_to_restock as $item) {
+            if (!empty($item['variant_id'])) {
+                $sql_update_stock = "UPDATE product_variants SET stock = stock + ? WHERE id = ?";
+                $stmt_stock = $mysqli->prepare($sql_update_stock);
+                $stmt_stock->bind_param("ii", $item['quantity'], $item['variant_id']);
+                $stmt_stock->execute();
+                $stmt_stock->close();
+            } else {
+                $sql_update_stock = "UPDATE products SET stock = stock + ? WHERE id = ? AND has_variants = 0";
+                $stmt_stock = $mysqli->prepare($sql_update_stock);
+                $stmt_stock->bind_param("ii", $item['quantity'], $item['product_id']);
+                $stmt_stock->execute();
+                $stmt_stock->close();
             }
-            $_SESSION['success_message'] = "Order #" . $order_id . " has been deleted successfully and stock has been restored.";
-        } else {
-            $_SESSION['success_message'] = "Order #" . $order_id . " has been deleted successfully. Stock was already restored.";
         }
+        $_SESSION['success_message'] = "Order #" . $order_id . " has been deleted successfully and its stock has been restored.";
     } else {
-         $_SESSION['success_message'] = "Order #" . $order_id . " has been deleted successfully.";
+        $_SESSION['success_message'] = "Order #" . $order_id . " has been deleted successfully. Stock was already restored previously.";
     }
 
     // Delete from order_items first to maintain referential integrity
