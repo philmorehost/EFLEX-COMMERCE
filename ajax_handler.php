@@ -275,16 +275,17 @@ switch ($action) {
 
         // Pagination
         ob_start();
-        $base_url = "products.php?";
-        if ($category_filter) $base_url .= "category=" . $category_filter . "&";
-        if ($min_price_filter !== null) $base_url .= "min_price=" . $min_price_filter . "&";
-        if ($max_price_filter !== null) $base_url .= "max_price=" . $max_price_filter . "&";
+        // We need to include the helpers file to use the function
+        require_once 'includes/helpers.php';
 
-        echo '<ul class="pagination justify-content-center">';
-        if($page > 1) echo '<li class="page-item"><a class="page-link" href="' . $base_url . 'page=' . ($page-1) . '">Previous</a></li>';
-        for($i = 1; $i <= $total_pages; $i++) echo '<li class="page-item ' . ($page == $i ? 'active' : '') . '"><a class="page-link" href="' . $base_url . 'page=' . $i . '">' . $i . '</a></li>';
-        if($page < $total_pages) echo '<li class="page-item"><a class="page-link" href="' . $base_url . 'page=' . ($page+1) . '">Next</a></li>';
-        echo '</ul>';
+        $query_params = [];
+        if ($category_filter) $query_params['category'] = $category_filter;
+        if ($min_price_filter !== null) $query_params['min_price'] = $min_price_filter;
+        if ($max_price_filter !== null) $query_params['max_price'] = $max_price_filter;
+        $query_string = http_build_query($query_params);
+        if (!empty($query_string)) $query_string .= '&';
+
+        render_pagination('products.php', $total_pages, $page, $query_string);
         $pagination_html = ob_get_clean();
 
         $response = [

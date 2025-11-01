@@ -125,27 +125,18 @@ $filter_categories = $result_cat->fetch_all(MYSQLI_ASSOC);
             </div>
 
             <!-- Pagination -->
-            <nav aria-label="Page navigation" id="pagination-container">
-  <ul class="pagination justify-content-center">
-    <?php
-        $base_url = "products.php?";
-        if ($category_filter) {
-            $base_url .= "category=" . $category_filter . "&";
-        }
-    ?>
-    <?php if($page > 1): ?>
-    <li class="page-item"><a class="page-link" href="<?php echo $base_url; ?>page=<?php echo $page-1; ?>">Previous</a></li>
-    <?php endif; ?>
+            <div id="pagination-container">
+                <?php
+                    $query_params = [];
+                    if ($category_filter) $query_params['category'] = $category_filter;
+                    if ($min_price_filter !== null) $query_params['min_price'] = $min_price_filter;
+                    if ($max_price_filter !== null) $query_params['max_price'] = $max_price_filter;
+                    $query_string = http_build_query($query_params);
+                    if (!empty($query_string)) $query_string .= '&';
 
-    <?php for($i = 1; $i <= $total_pages; $i++): ?>
-    <li class="page-item <?php if($page == $i) echo 'active'; ?>"><a class="page-link" href="<?php echo $base_url; ?>page=<?php echo $i; ?>"><?php echo $i; ?></a></li>
-    <?php endfor; ?>
-
-    <?php if($page < $total_pages): ?>
-    <li class="page-item"><a class="page-link" href="<?php echo $base_url; ?>page=<?php echo $page+1; ?>">Next</a></li>
-    <?php endif; ?>
-  </ul>
-</nav>
+                    render_pagination('products.php', $total_pages, $page, $query_string);
+                ?>
+            </div>
 </div>
 
 <?php
