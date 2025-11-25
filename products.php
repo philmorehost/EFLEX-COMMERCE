@@ -43,11 +43,12 @@ if (!empty($where_conditions)) {
 // Get total number of products (with filter)
 $total_records_sql = "SELECT COUNT(*) FROM products " . $where_clause;
 $stmt_total = $mysqli->prepare($total_records_sql);
-if (!empty($params)) {
+if ($types !== '') { // More reliable check for parameters
     $stmt_total->bind_param($types, ...$params);
 }
 $stmt_total->execute();
-$total_records = $stmt_total->get_result()->fetch_row()[0];
+$total_records_result = $stmt_total->get_result();
+$total_records = $total_records_result ? $total_records_result->fetch_row()[0] : 0;
 $total_pages = ceil($total_records / $records_per_page);
 $stmt_total->close();
 
