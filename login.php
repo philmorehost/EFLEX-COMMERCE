@@ -52,6 +52,17 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                                 $_SESSION["id"] = $id;
                                 $_SESSION["username"] = $username;
 
+                                if (isset($_POST['remember'])) {
+                                    $token = bin2hex(random_bytes(32));
+                                    $hashed_token = hash('sha256', $token);
+                                    $expires_at = date('Y-m-d H:i:s', time() + (86400 * 30)); // 30 days
+                                    $stmt = $mysqli->prepare("INSERT INTO auth_tokens (user_id, token, expires_at) VALUES (?, ?, ?)");
+                                    $stmt->bind_param("iss", $id, $hashed_token, $expires_at);
+                                    $stmt->execute();
+                                    $stmt->close();
+                                    setcookie('remember_me', $token . ':' . $id, time() + (86400 * 30), "/");
+                                }
+
                                 // --- Start Admin Notification ---
                                 require_once "includes/send_notification.php";
                                 $admin_subject = "User Login Notification";
@@ -119,6 +130,14 @@ include 'includes/header.php';
                 <label>Password</label>
                 <input type="password" name="password" class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>">
                 <span class="invalid-feedback"><?php echo $password_err; ?></span>
+            </div>
+            <div class="form-group mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="remember" id="remember">
+                    <label class="form-check-label" for="remember">
+                        Remember me
+                    </label>
+                </div>
             </div>
             <div class="form-group d-flex justify-content-between align-items-center">
                 <input type="submit" class="btn btn-primary" value="Login">

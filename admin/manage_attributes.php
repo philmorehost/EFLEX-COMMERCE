@@ -2,6 +2,7 @@
 ob_start();
 // Include the new admin header
 include 'includes/admin_header.php';
+require_once '../includes/helpers.php';
 // For now, let's reuse the products permission. We can create a new one later if needed.
 require_permission('manage_products');
 
@@ -193,15 +194,7 @@ if ($stmt_attr = $mysqli->prepare($sql_attr)) {
     </div>
     <?php if($total_pages > 1): ?>
     <div class="card-footer">
-        <nav>
-            <ul class="pagination justify-content-center">
-                <?php for($i = 1; $i <= $total_pages; $i++): ?>
-                <li class="page-item <?php if($page == $i) echo 'active'; ?>">
-                    <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
-                </li>
-                <?php endfor; ?>
-            </ul>
-        </nav>
+        <?php render_pagination('manage_attributes.php', $total_pages, $page); ?>
     </div>
     <?php endif; ?>
 </div>

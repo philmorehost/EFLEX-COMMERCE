@@ -84,4 +84,43 @@ function render_pagination($base_url, $total_pages, $current_page, $query_string
     echo '</ul>';
     echo '</nav>';
 }
+
+function check_remember_me($mysqli) {
+    if (empty($_SESSION["loggedin"]) && isset($_COOKIE['remember_me'])) {
+        $parts = explode(':', $_COOKIE['remember_me'], 2);
+        if (count($parts) === 2) {
+            list($token, $user_id) = $parts;
+
+            if (!empty($token) && is_numeric($user_id)) {
+                $hashed_token = hash('sha256', $token);
+                $user_id = (int)$user_id;
+                $stmt = $mysqli->prepare("SELECT user_id FROM auth_tokens WHERE token = ? AND user_id = ? AND expires_at > NOW()");
+                $stmt->bind_param("si", $hashed_token, $user_id);
+                $stmt->execute();
+                $stmt->store_result();
+
+                if ($stmt->num_rows == 1) {
+                    // Token is valid, log the user in
+                    session_regenerate_id();
+
+                    // Fetch user details to populate session
+                    $user_stmt = $mysqli->prepare("SELECT id, username, email FROM users WHERE id = ?");
+                    $user_stmt->bind_param("i", $user_id);
+                    $user_stmt->execute();
+                    $user_result = $user_stmt->get_result();
+                    $user = $user_result->fetch_assoc();
+
+                    $_SESSION["loggedin"] = true;
+                    $_SESSION["id"] = $user['id'];
+                    $_SESSION["username"] = $user['username'];
+                    // Add any other necessary session variables here, like email
+                    $_SESSION['email'] = $user['email'];
+
+                    $user_stmt->close();
+                }
+                $stmt->close();
+            }
+        }
+    }
+}
 ?>

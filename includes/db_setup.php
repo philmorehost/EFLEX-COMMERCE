@@ -228,6 +228,17 @@ function setup_database_tables($mysqli) {
         KEY `value_id` (`value_id`),
         CONSTRAINT `options_ibfk_1` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`id`) ON DELETE CASCADE,
         CONSTRAINT `options_ibfk_2` FOREIGN KEY (`value_id`) REFERENCES `attribute_values` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;",
+
+    "auth_tokens" => "CREATE TABLE `auth_tokens` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `user_id` int(11) NOT NULL,
+        `token` varchar(255) NOT NULL,
+        `expires_at` datetime NOT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `token` (`token`),
+        KEY `user_id` (`user_id`),
+        CONSTRAINT `auth_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
     ];
 

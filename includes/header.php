@@ -16,6 +16,10 @@ if (!is_dir($proofs_dir)) mkdir($proofs_dir, 0777, true);
 // Include and run database setup/migration
 require_once 'db_connect.php';
 
+// --- Handle Remember Me ---
+require_once 'helpers.php';
+check_remember_me($mysqli);
+
 // --- Fetch all site settings ---
 $settings_sql = "SELECT setting_key, setting_value FROM settings";
 $result = $mysqli->query($settings_sql);
